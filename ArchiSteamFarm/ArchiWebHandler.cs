@@ -2121,8 +2121,7 @@ namespace ArchiSteamFarm {
 			Dictionary<string, string> data = new Dictionary<string, string>(6) {
 				{ "partner", partnerID.ToString() },
 				{ "serverid", "1" },
-				{ "trade_offer_create_params", string.IsNullOrEmpty(token) ? "" : new JObject { { "trade_offer_access_token", token } }.ToString(Formatting.None) },
-				{ "tradeoffermessage", "Sent by " + SharedInfo.PublicIdentifier + "/" + SharedInfo.Version }
+				{ "trade_offer_create_params", string.IsNullOrEmpty(token) ? "" : new JObject { { "trade_offer_access_token", token } }.ToString(Formatting.None) }
 			};
 
 			HashSet<ulong> mobileTradeOfferIDs = new HashSet<ulong>();
