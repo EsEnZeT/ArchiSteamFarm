@@ -119,7 +119,7 @@ namespace ArchiSteamFarm {
 		[ItemCanBeNull]
 		[PublicAPI]
 		[SuppressMessage("ReSharper", "FunctionComplexityOverflow")]
-		public async Task<HashSet<Steam.Asset>> GetInventory(ulong steamID = 0, uint appID = Steam.Asset.SteamAppID, uint contextID = Steam.Asset.SteamCommunityContextID, bool? tradable = null, IReadOnlyCollection<uint> wantedRealAppIDs = null, IReadOnlyCollection<Steam.Asset.EType> wantedTypes = null, IReadOnlyCollection<(uint AppID, Steam.Asset.EType Type)> wantedSets = null, IReadOnlyCollection<(uint AppID, Steam.Asset.EType Type)> skippedSets = null) {
+		public async Task<HashSet<Steam.Asset>> GetInventory(ulong steamID = 0, uint appID = Steam.Asset.SteamAppID, ulong contextID = Steam.Asset.SteamCommunityContextID, bool? marketable = null, bool? tradable = null, IReadOnlyCollection<uint> wantedRealAppIDs = null, IReadOnlyCollection<Steam.Asset.EType> wantedTypes = null, IReadOnlyCollection<(uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity)> wantedSets = null) {
 			if ((appID == 0) || (contextID == 0)) {
 				Bot.ArchiLogger.LogNullError(nameof(appID) + " || " + nameof(contextID));
 
@@ -174,7 +174,7 @@ namespace ArchiSteamFarm {
 						return null;
 					}
 
-					Dictionary<ulong, (bool Marketable, bool Tradable, uint RealAppID, Steam.Asset.EType Type)> descriptions = new Dictionary<ulong, (bool Marketable, bool Tradable, uint RealAppID, Steam.Asset.EType Type)>();
+					Dictionary<ulong, (bool Marketable, bool Tradable, uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity)> descriptions = new Dictionary<ulong, (bool Marketable, bool Tradable, uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity)>();
 
 					foreach (Steam.InventoryResponse.Description description in response.Descriptions.Where(description => description != null)) {
 						if (description.ClassID == 0) {
@@ -187,25 +187,12 @@ namespace ArchiSteamFarm {
 							continue;
 						}
 
-						uint realAppID = 0;
-						Steam.Asset.EType type = Steam.Asset.EType.Unknown;
-
-						if (appID == Steam.Asset.SteamAppID) {
-							if (!string.IsNullOrEmpty(description.MarketHashName)) {
-								realAppID = GetAppIDFromMarketHashName(description.MarketHashName);
-							}
-
-							if (!string.IsNullOrEmpty(description.Type)) {
-								type = GetItemType(description.Type);
-							}
-						}
-
-						descriptions[description.ClassID] = (description.Marketable, description.Tradable, realAppID, type);
+						descriptions[description.ClassID] = (description.Marketable, description.Tradable, description.RealAppID, description.Type, description.Rarity);
 					}
 
 					foreach (Steam.Asset asset in response.Assets.Where(asset => asset != null)) {
-						if (descriptions.TryGetValue(asset.ClassID, out (bool Marketable, bool Tradable, uint RealAppID, Steam.Asset.EType Type) description)) {
-							if ((tradable.HasValue && (description.Tradable != tradable.Value)) || (wantedRealAppIDs?.Contains(description.RealAppID) == false) || (wantedSets?.Contains((description.RealAppID, description.Type)) == false) || (wantedTypes?.Contains(description.Type) == false) || (skippedSets?.Contains((description.RealAppID, description.Type)) == true)) {
+						if (descriptions.TryGetValue(asset.ClassID, out (bool Marketable, bool Tradable, uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity) description)) {
+							if ((marketable.HasValue && (description.Marketable != marketable.Value)) || (tradable.HasValue && (description.Tradable != tradable.Value)) || (wantedRealAppIDs?.Contains(description.RealAppID) == false) || (wantedTypes?.Contains(description.Type) == false) || (wantedSets?.Contains((description.RealAppID, description.Type, description.Rarity)) == false)) {
 								continue;
 							}
 
@@ -213,7 +200,8 @@ namespace ArchiSteamFarm {
 							asset.Tradable = description.Tradable;
 							asset.RealAppID = description.RealAppID;
 							asset.Type = description.Type;
-						} else if (tradable.HasValue || (wantedRealAppIDs != null) || (wantedSets != null) || (wantedTypes != null) || (skippedSets != null)) {
+							asset.Rarity = description.Rarity;
+						} else if (marketable.HasValue || tradable.HasValue || (wantedRealAppIDs != null) || (wantedTypes != null) || (wantedSets != null)) {
 							continue;
 						}
 
@@ -548,8 +536,8 @@ namespace ArchiSteamFarm {
 
 		[PublicAPI]
 		public async Task<HtmlDocument> UrlPostToHtmlDocumentWithSession(string host, string request, Dictionary<string, string> data = null, string referer = null, ESession session = ESession.Lowercase, bool checkSessionPreemptively = true, byte maxTries = WebBrowser.MaxTries) {
-			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request)) {
-				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request));
+			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request) || !Enum.IsDefined(typeof(ESession), session)) {
+				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request) + " || " + nameof(session));
 
 				return null;
 			}
@@ -614,6 +602,10 @@ namespace ArchiSteamFarm {
 						sessionName = "sessionid";
 
 						break;
+					case ESession.PascalCase:
+						sessionName = "SessionID";
+
+						break;
 					default:
 						Bot.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(session), session));
 
@@ -656,8 +648,8 @@ namespace ArchiSteamFarm {
 
 		[PublicAPI]
 		public async Task<T> UrlPostToJsonObjectWithSession<T>(string host, string request, Dictionary<string, string> data = null, string referer = null, ESession session = ESession.Lowercase, bool checkSessionPreemptively = true, byte maxTries = WebBrowser.MaxTries) where T : class {
-			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request)) {
-				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request));
+			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request) || !Enum.IsDefined(typeof(ESession), session)) {
+				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request) + " || " + nameof(session));
 
 				return null;
 			}
@@ -720,6 +712,10 @@ namespace ArchiSteamFarm {
 						break;
 					case ESession.Lowercase:
 						sessionName = "sessionid";
+
+						break;
+					case ESession.PascalCase:
+						sessionName = "SessionID";
 
 						break;
 					default:
@@ -764,8 +760,8 @@ namespace ArchiSteamFarm {
 
 		[PublicAPI]
 		public async Task<T> UrlPostToJsonObjectWithSession<T>(string host, string request, List<KeyValuePair<string, string>> data = null, string referer = null, ESession session = ESession.Lowercase, bool checkSessionPreemptively = true, byte maxTries = WebBrowser.MaxTries) where T : class {
-			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request)) {
-				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request));
+			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request) || !Enum.IsDefined(typeof(ESession), session)) {
+				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request) + " || " + nameof(session));
 
 				return null;
 			}
@@ -828,6 +824,10 @@ namespace ArchiSteamFarm {
 						break;
 					case ESession.Lowercase:
 						sessionName = "sessionid";
+
+						break;
+					case ESession.PascalCase:
+						sessionName = "SessionID";
 
 						break;
 					default:
@@ -875,8 +875,8 @@ namespace ArchiSteamFarm {
 
 		[PublicAPI]
 		public async Task<bool> UrlPostWithSession(string host, string request, Dictionary<string, string> data = null, string referer = null, ESession session = ESession.Lowercase, bool checkSessionPreemptively = true, byte maxTries = WebBrowser.MaxTries) {
-			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request)) {
-				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request));
+			if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(request) || !Enum.IsDefined(typeof(ESession), session)) {
+				Bot.ArchiLogger.LogNullError(nameof(host) + " || " + nameof(request) + " || " + nameof(session));
 
 				return false;
 			}
@@ -939,6 +939,10 @@ namespace ArchiSteamFarm {
 						break;
 					case ESession.Lowercase:
 						sessionName = "sessionid";
+
+						break;
+					case ESession.PascalCase:
+						sessionName = "SessionID";
 
 						break;
 					default:
@@ -1111,7 +1115,7 @@ namespace ArchiSteamFarm {
 			KeyValue response = null;
 
 			for (byte i = 0; (i < WebBrowser.MaxTries) && (response == null); i++) {
-				using (dynamic iEconService = WebAPI.GetAsyncInterface(IEconService, steamApiKey)) {
+				using (dynamic iEconService = Bot.SteamConfiguration.GetAsyncWebAPIInterface(IEconService)) {
 					iEconService.Timeout = WebBrowser.Timeout;
 
 					try {
@@ -1120,6 +1124,7 @@ namespace ArchiSteamFarm {
 
 							// ReSharper disable once AccessToDisposedClosure
 							async () => await iEconService.DeclineTradeOffer(
+								key: steamApiKey,
 								method: WebRequestMethods.Http.Post,
 								tradeofferid: tradeID
 							)
@@ -1145,7 +1150,7 @@ namespace ArchiSteamFarm {
 		internal HttpClient GenerateDisposableHttpClient() => WebBrowser.GenerateDisposableHttpClient();
 
 		[ItemCanBeNull]
-		internal async Task<HashSet<uint>> GenerateNewDiscoveryQueue() {
+		internal async Task<ImmutableHashSet<uint>> GenerateNewDiscoveryQueue() {
 			const string request = "/explore/generatenewdiscoveryqueue";
 
 			// Extra entry for sessionID
@@ -1167,7 +1172,7 @@ namespace ArchiSteamFarm {
 			KeyValue response = null;
 
 			for (byte i = 0; (i < WebBrowser.MaxTries) && (response == null); i++) {
-				using (dynamic iEconService = WebAPI.GetAsyncInterface(IEconService, steamApiKey)) {
+				using (dynamic iEconService = Bot.SteamConfiguration.GetAsyncWebAPIInterface(IEconService)) {
 					iEconService.Timeout = WebBrowser.Timeout;
 
 					try {
@@ -1179,6 +1184,7 @@ namespace ArchiSteamFarm {
 								active_only: 1,
 								get_descriptions: 1,
 								get_received_offers: 1,
+								key: steamApiKey,
 								time_historical_cutoff: uint.MaxValue
 							)
 						).ConfigureAwait(false);
@@ -1196,7 +1202,7 @@ namespace ArchiSteamFarm {
 				return null;
 			}
 
-			Dictionary<(uint AppID, ulong ClassID), (bool Marketable, uint RealAppID, Steam.Asset.EType Type)> descriptions = new Dictionary<(uint AppID, ulong ClassID), (bool Marketable, uint RealAppID, Steam.Asset.EType Type)>();
+			Dictionary<(uint AppID, ulong ClassID), (bool Marketable, uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity)> descriptions = new Dictionary<(uint AppID, ulong ClassID), (bool Marketable, uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity)>();
 
 			foreach (KeyValue description in response["descriptions"].Children) {
 				uint appID = description["appid"].AsUnsignedInteger();
@@ -1221,24 +1227,39 @@ namespace ArchiSteamFarm {
 
 				bool marketable = description["marketable"].AsBoolean();
 
-				uint realAppID = 0;
 				Steam.Asset.EType type = Steam.Asset.EType.Unknown;
+				Steam.Asset.ERarity rarity = Steam.Asset.ERarity.Unknown;
+				uint realAppID = 0;
 
-				if (appID == Steam.Asset.SteamAppID) {
-					string hashName = description["market_hash_name"].Value;
+				List<KeyValue> tags = description["tags"].Children;
 
-					if (!string.IsNullOrEmpty(hashName)) {
-						realAppID = GetAppIDFromMarketHashName(hashName);
+				if (tags.Count > 0) {
+					HashSet<Steam.InventoryResponse.Description.Tag> parsedTags = new HashSet<Steam.InventoryResponse.Description.Tag>();
+
+					foreach (KeyValue tag in tags) {
+						string identifier = tag["category"].AsString();
+
+						if (string.IsNullOrEmpty(identifier)) {
+							Bot.ArchiLogger.LogNullError(nameof(identifier));
+
+							return null;
+						}
+
+						string value = tag["internal_name"].AsString();
+
+						if (string.IsNullOrEmpty(value)) {
+							Bot.ArchiLogger.LogNullError(nameof(value));
+
+							return null;
+						}
+
+						parsedTags.Add(new Steam.InventoryResponse.Description.Tag(identifier, value));
 					}
 
-					string descriptionType = description["type"].Value;
-
-					if (!string.IsNullOrEmpty(descriptionType)) {
-						type = GetItemType(descriptionType);
-					}
+					(type, rarity, realAppID) = Steam.InventoryResponse.Description.InterpretTags(parsedTags);
 				}
 
-				descriptions[(appID, classID)] = (marketable, realAppID, type);
+				descriptions[(appID, classID)] = (marketable, realAppID, type, rarity);
 			}
 
 			HashSet<Steam.TradeOffer> result = new HashSet<Steam.TradeOffer>();
@@ -1305,7 +1326,7 @@ namespace ArchiSteamFarm {
 			KeyValue response = null;
 
 			for (byte i = 0; (i < WebBrowser.MaxTries) && (response == null); i++) {
-				using (dynamic iSteamApps = WebAPI.GetAsyncInterface(ISteamApps)) {
+				using (dynamic iSteamApps = Bot.SteamConfiguration.GetAsyncWebAPIInterface(ISteamApps)) {
 					iSteamApps.Timeout = WebBrowser.Timeout;
 
 					try {
@@ -1572,7 +1593,7 @@ namespace ArchiSteamFarm {
 			KeyValue response = null;
 
 			for (byte i = 0; (i < WebBrowser.MaxTries) && (response == null); i++) {
-				using (dynamic iPlayerService = WebAPI.GetAsyncInterface(IPlayerService, steamApiKey)) {
+				using (dynamic iPlayerService = Bot.SteamConfiguration.GetAsyncWebAPIInterface(IPlayerService)) {
 					iPlayerService.Timeout = WebBrowser.Timeout;
 
 					try {
@@ -1582,6 +1603,7 @@ namespace ArchiSteamFarm {
 							// ReSharper disable once AccessToDisposedClosure
 							async () => await iPlayerService.GetOwnedGames(
 								include_appinfo: 1,
+								key: steamApiKey,
 								steamid: steamID
 							)
 						).ConfigureAwait(false);
@@ -1612,7 +1634,7 @@ namespace ArchiSteamFarm {
 					return null;
 				}
 
-				result[appID] = game["name"].Value;
+				result[appID] = game["name"].AsString();
 			}
 
 			return result;
@@ -1622,7 +1644,7 @@ namespace ArchiSteamFarm {
 			KeyValue response = null;
 
 			for (byte i = 0; (i < WebBrowser.MaxTries) && (response == null); i++) {
-				using (dynamic iTwoFactorService = WebAPI.GetAsyncInterface(ITwoFactorService)) {
+				using (dynamic iTwoFactorService = Bot.SteamConfiguration.GetAsyncWebAPIInterface(ITwoFactorService)) {
 					iTwoFactorService.Timeout = WebBrowser.Timeout;
 
 					try {
@@ -1729,7 +1751,7 @@ namespace ArchiSteamFarm {
 			KeyValue response = null;
 
 			for (byte i = 0; (i < WebBrowser.MaxTries) && (response == null); i++) {
-				using (dynamic iEconService = WebAPI.GetAsyncInterface(IEconService, steamApiKey)) {
+				using (dynamic iEconService = Bot.SteamConfiguration.GetAsyncWebAPIInterface(IEconService)) {
 					iEconService.Timeout = WebBrowser.Timeout;
 
 					try {
@@ -1738,6 +1760,7 @@ namespace ArchiSteamFarm {
 
 							// ReSharper disable once AccessToDisposedClosure
 							async () => await iEconService.GetTradeHoldDurations(
+								key: steamApiKey,
 								steamid_target: steamID,
 								trade_offer_access_token: tradeToken ?? "" // TODO: Change me once https://github.com/SteamRE/SteamKit/pull/522 is merged
 							)
@@ -1815,7 +1838,7 @@ namespace ArchiSteamFarm {
 			const string request = "/mobileconf/multiajaxop";
 
 			// Extra entry for sessionID
-			List<KeyValuePair<string, string>> data = new List<KeyValuePair<string, string>>(8 + confirmations.Count * 2) {
+			List<KeyValuePair<string, string>> data = new List<KeyValuePair<string, string>>(8 + (confirmations.Count * 2)) {
 				new KeyValuePair<string, string>("a", SteamID.ToString()),
 				new KeyValuePair<string, string>("k", confirmationHash),
 				new KeyValuePair<string, string>("m", "android"),
@@ -1856,24 +1879,23 @@ namespace ArchiSteamFarm {
 
 			string sessionID = Convert.ToBase64String(Encoding.UTF8.GetBytes(steamID.ToString()));
 
-			// Generate an AES session key
+			// Generate a random 32-byte session key
 			byte[] sessionKey = CryptoHelper.GenerateRandomBlock(32);
 
-			// RSA encrypt it with the public key for the universe we're on
+			// RSA encrypt our session key with the public key for the universe we're on
 			byte[] encryptedSessionKey;
 
 			using (RSACrypto rsa = new RSACrypto(KeyDictionary.GetPublicKey(universe))) {
 				encryptedSessionKey = rsa.Encrypt(sessionKey);
 			}
 
-			// Copy our login key
-			byte[] loginKey = new byte[webAPIUserNonce.Length];
-			Array.Copy(Encoding.ASCII.GetBytes(webAPIUserNonce), loginKey, webAPIUserNonce.Length);
+			// Generate login key from the user nonce that we've received from Steam network
+			byte[] loginKey = Encoding.ASCII.GetBytes(webAPIUserNonce);
 
-			// AES encrypt the login key with our session key
+			// AES encrypt our login key with our session key
 			byte[] encryptedLoginKey = CryptoHelper.SymmetricEncrypt(loginKey, sessionKey);
 
-			// Do the magic
+			// We're now ready to send the data to Steam API
 			Bot.ArchiLogger.LogGenericInfo(string.Format(Strings.LoggingIn, ISteamUserAuth));
 
 			KeyValue response;
@@ -1881,7 +1903,7 @@ namespace ArchiSteamFarm {
 			// We do not use usual retry pattern here as webAPIUserNonce is valid only for a single request
 			// Even during timeout, webAPIUserNonce is most likely already invalid
 			// Instead, the caller is supposed to ask for new webAPIUserNonce and call Init() again on failure
-			using (dynamic iSteamUserAuth = WebAPI.GetAsyncInterface(ISteamUserAuth)) {
+			using (dynamic iSteamUserAuth = Bot.SteamConfiguration.GetAsyncWebAPIInterface(ISteamUserAuth)) {
 				iSteamUserAuth.Timeout = WebBrowser.Timeout;
 
 				try {
@@ -1911,7 +1933,7 @@ namespace ArchiSteamFarm {
 				return false;
 			}
 
-			string steamLogin = response["token"].Value;
+			string steamLogin = response["token"].AsString();
 
 			if (string.IsNullOrEmpty(steamLogin)) {
 				Bot.ArchiLogger.LogNullError(nameof(steamLogin));
@@ -1919,7 +1941,7 @@ namespace ArchiSteamFarm {
 				return false;
 			}
 
-			string steamLoginSecure = response["tokensecure"].Value;
+			string steamLoginSecure = response["tokensecure"].AsString();
 
 			if (string.IsNullOrEmpty(steamLoginSecure)) {
 				Bot.ArchiLogger.LogNullError(nameof(steamLoginSecure));
@@ -2231,83 +2253,13 @@ namespace ArchiSteamFarm {
 
 			text = text.Substring(keyIndex);
 
-			if ((text.Length != 32) || !Utilities.IsValidHexadecimalString(text)) {
+			if ((text.Length != 32) || !Utilities.IsValidHexadecimalText(text)) {
 				Bot.ArchiLogger.LogNullError(nameof(text));
 
 				return (ESteamApiKeyState.Error, null);
 			}
 
 			return (ESteamApiKeyState.Registered, text);
-		}
-
-		private static uint GetAppIDFromMarketHashName(string hashName) {
-			if (string.IsNullOrEmpty(hashName)) {
-				ASF.ArchiLogger.LogNullError(nameof(hashName));
-
-				return 0;
-			}
-
-			int index = hashName.IndexOf('-');
-
-			if (index <= 0) {
-				ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(hashName), hashName));
-
-				return 0;
-			}
-
-			if (!uint.TryParse(hashName.Substring(0, index), out uint appID) || (appID == 0)) {
-				ASF.ArchiLogger.LogNullError(nameof(appID));
-
-				return 0;
-			}
-
-			return appID;
-		}
-
-		private static Steam.Asset.EType GetItemType(string name) {
-			if (string.IsNullOrEmpty(name)) {
-				ASF.ArchiLogger.LogNullError(nameof(name));
-
-				return Steam.Asset.EType.Unknown;
-			}
-
-			switch (name) {
-				case "Booster Pack":
-
-					return Steam.Asset.EType.BoosterPack;
-				case "Steam Gems":
-
-					return Steam.Asset.EType.SteamGems;
-				default:
-
-					if (name.EndsWith("Consumable", StringComparison.Ordinal)) {
-						return Steam.Asset.EType.Consumable;
-					}
-
-					if (name.EndsWith("Emoticon", StringComparison.Ordinal)) {
-						return Steam.Asset.EType.Emoticon;
-					}
-
-					if (name.EndsWith("Foil Trading Card", StringComparison.Ordinal)) {
-						return Steam.Asset.EType.FoilTradingCard;
-					}
-
-					if (name.EndsWith("Profile Background", StringComparison.Ordinal)) {
-						return Steam.Asset.EType.ProfileBackground;
-					}
-
-					if (name.EndsWith("Sale Item", StringComparison.Ordinal)) {
-						return Steam.Asset.EType.SaleItem;
-					}
-
-					if (name.EndsWith("Trading Card", StringComparison.Ordinal)) {
-						return Steam.Asset.EType.TradingCard;
-					}
-
-					ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(name), name));
-
-					return Steam.Asset.EType.Unknown;
-			}
 		}
 
 		private async Task<bool> IsProfileUri(Uri uri, bool waitForInitialization = true) {
@@ -2382,7 +2334,7 @@ namespace ArchiSteamFarm {
 			return uri.AbsolutePath.StartsWith("/login", StringComparison.Ordinal) || uri.Host.Equals("lostauth");
 		}
 
-		private static bool ParseItems(IReadOnlyDictionary<(uint AppID, ulong ClassID), (bool Marketable, uint RealAppID, Steam.Asset.EType Type)> descriptions, IReadOnlyCollection<KeyValue> input, ICollection<Steam.Asset> output) {
+		private static bool ParseItems(IReadOnlyDictionary<(uint AppID, ulong ClassID), (bool Marketable, uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity)> descriptions, IReadOnlyCollection<KeyValue> input, ICollection<Steam.Asset> output) {
 			if ((descriptions == null) || (input == null) || (input.Count == 0) || (output == null)) {
 				ASF.ArchiLogger.LogNullError(nameof(descriptions) + " || " + nameof(input) + " || " + nameof(output));
 
@@ -2398,7 +2350,7 @@ namespace ArchiSteamFarm {
 					return false;
 				}
 
-				uint contextID = item["contextid"].AsUnsignedInteger();
+				ulong contextID = item["contextid"].AsUnsignedLong();
 
 				if (contextID == 0) {
 					ASF.ArchiLogger.LogNullError(nameof(contextID));
@@ -2425,14 +2377,16 @@ namespace ArchiSteamFarm {
 				bool marketable = true;
 				uint realAppID = 0;
 				Steam.Asset.EType type = Steam.Asset.EType.Unknown;
+				Steam.Asset.ERarity rarity = Steam.Asset.ERarity.Unknown;
 
-				if (descriptions.TryGetValue((appID, classID), out (bool Marketable, uint RealAppID, Steam.Asset.EType Type) description)) {
+				if (descriptions.TryGetValue((appID, classID), out (bool Marketable, uint RealAppID, Steam.Asset.EType Type, Steam.Asset.ERarity Rarity) description)) {
 					marketable = description.Marketable;
 					realAppID = description.RealAppID;
 					type = description.Type;
+					rarity = description.Rarity;
 				}
 
-				Steam.Asset steamAsset = new Steam.Asset(appID, contextID, classID, amount, marketable, realAppID, type);
+				Steam.Asset steamAsset = new Steam.Asset(appID, contextID, classID, amount, marketable, realAppID, type, rarity);
 				output.Add(steamAsset);
 			}
 
@@ -2716,7 +2670,8 @@ namespace ArchiSteamFarm {
 		public enum ESession : byte {
 			None,
 			Lowercase,
-			CamelCase
+			CamelCase,
+			PascalCase
 		}
 
 		private enum ESteamApiKeyState : byte {

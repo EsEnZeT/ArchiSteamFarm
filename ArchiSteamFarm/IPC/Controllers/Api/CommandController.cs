@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -49,7 +49,7 @@ namespace ArchiSteamFarm.IPC.Controllers.Api {
 				return BadRequest(new GenericResponse<string>(false, string.Format(Strings.ErrorIsInvalid, nameof(ASF.GlobalConfig.SteamOwnerID))));
 			}
 
-			Bot targetBot = Bot.Bots.OrderBy(bot => bot.Key).Select(bot => bot.Value).FirstOrDefault();
+			Bot targetBot = Bot.Bots.OrderBy(bot => bot.Key, Bot.BotsComparer).Select(bot => bot.Value).FirstOrDefault();
 
 			if (targetBot == null) {
 				return BadRequest(new GenericResponse<string>(false, Strings.ErrorNoBotsDefined));
@@ -57,9 +57,13 @@ namespace ArchiSteamFarm.IPC.Controllers.Api {
 
 			if (!string.IsNullOrEmpty(ASF.GlobalConfig.CommandPrefix) && command.StartsWith(ASF.GlobalConfig.CommandPrefix, StringComparison.Ordinal)) {
 				command = command.Substring(ASF.GlobalConfig.CommandPrefix.Length);
+
+				if (string.IsNullOrEmpty(command)) {
+					return BadRequest(new GenericResponse<string>(false, string.Format(Strings.ErrorIsEmpty, nameof(command))));
+				}
 			}
 
-			string response = await targetBot.Commands.Response(ASF.GlobalConfig.SteamOwnerID, command, false).ConfigureAwait(false);
+			string response = await targetBot.Commands.Response(ASF.GlobalConfig.SteamOwnerID, command).ConfigureAwait(false);
 
 			return Ok(new GenericResponse<string>(response));
 		}

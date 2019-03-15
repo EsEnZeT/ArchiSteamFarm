@@ -692,4 +692,13 @@
   <data name="PluginsWarning" xml:space="preserve">
     <value>你已載入一個以上的自訂插件。由於我們無法支援修改過的程序，如遭遇任何問題，請向相關插件的開發者尋求協助。</value>
   </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>請稍候⋯⋯</value>
+  </data>
+  
+  
+  
+  
+  
+  
 </root>

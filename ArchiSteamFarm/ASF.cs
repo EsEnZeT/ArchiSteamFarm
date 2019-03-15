@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -44,6 +44,9 @@ namespace ArchiSteamFarm {
 		public static readonly ArchiLogger ArchiLogger = new ArchiLogger(SharedInfo.ASF);
 
 		[PublicAPI]
+		public static byte LoadBalancingDelay => Math.Max(GlobalConfig?.LoginLimiterDelay ?? 0, GlobalConfig.DefaultLoginLimiterDelay);
+
+		[PublicAPI]
 		public static GlobalConfig GlobalConfig { get; private set; }
 
 		[PublicAPI]
@@ -69,6 +72,27 @@ namespace ArchiSteamFarm {
 			return (steamID == GlobalConfig.SteamOwnerID) || (Debugging.IsDebugBuild && (steamID == SharedInfo.ArchiSteamID));
 		}
 
+		internal static string GetFilePath(EFileType fileType) {
+			if (!Enum.IsDefined(typeof(EFileType), fileType)) {
+				ArchiLogger.LogNullError(nameof(fileType));
+
+				return null;
+			}
+
+			switch (fileType) {
+				case EFileType.Config:
+
+					return Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalConfigFileName);
+				case EFileType.Database:
+
+					return Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalDatabaseFileName);
+				default:
+					ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(fileType), fileType));
+
+					return null;
+			}
+		}
+
 		internal static async Task Init() {
 			WebBrowser = new WebBrowser(ArchiLogger, GlobalConfig.WebProxy, true);
 
@@ -84,11 +108,15 @@ namespace ArchiSteamFarm {
 
 			InitBotsComparer(botsComparer);
 
+			if (!GlobalConfig.Headless) {
+				Logging.StartInteractiveConsole();
+			}
+
 			if (GlobalConfig.IPC) {
 				await ArchiKestrel.Start().ConfigureAwait(false);
 			}
 
-			await RegisterBots(botsComparer).ConfigureAwait(false);
+			await RegisterBots().ConfigureAwait(false);
 
 			InitEvents();
 		}
@@ -178,15 +206,13 @@ namespace ArchiSteamFarm {
 
 				ArchiLogger.LogGenericInfo(string.Format(Strings.UpdateVersionInfo, SharedInfo.Version, newVersion));
 
-				if (SharedInfo.Version == newVersion) {
-					return SharedInfo.Version;
-				}
+				if (SharedInfo.Version >= newVersion) {
+					if (SharedInfo.Version > newVersion) {
+						ArchiLogger.LogGenericWarning(Strings.WarningPreReleaseVersion);
+						await Task.Delay(15 * 1000).ConfigureAwait(false);
+					}
 
-				if (SharedInfo.Version > newVersion) {
-					ArchiLogger.LogGenericWarning(Strings.WarningPreReleaseVersion);
-					await Task.Delay(15 * 1000).ConfigureAwait(false);
-
-					return SharedInfo.Version;
+					return newVersion;
 				}
 
 				if (!updateOverride && (GlobalConfig.UpdatePeriod == 0)) {
@@ -548,13 +574,7 @@ namespace ArchiSteamFarm {
 			await OnCreatedFile(e.Name, e.FullPath).ConfigureAwait(false);
 		}
 
-		private static async Task RegisterBots(StringComparer botsComparer) {
-			if (botsComparer == null) {
-				ArchiLogger.LogNullError(nameof(botsComparer));
-
-				return;
-			}
-
+		private static async Task RegisterBots() {
 			if (Bot.Bots.Count > 0) {
 				return;
 			}
@@ -579,7 +599,7 @@ namespace ArchiSteamFarm {
 			HashSet<string> botNames;
 
 			try {
-				botNames = Directory.EnumerateFiles(SharedInfo.ConfigDirectory, "*" + SharedInfo.ConfigExtension).Select(Path.GetFileNameWithoutExtension).Where(botName => !string.IsNullOrEmpty(botName) && IsValidBotName(botName)).ToHashSet(botsComparer);
+				botNames = Directory.EnumerateFiles(SharedInfo.ConfigDirectory, "*" + SharedInfo.ConfigExtension).Select(Path.GetFileNameWithoutExtension).Where(botName => !string.IsNullOrEmpty(botName) && IsValidBotName(botName)).ToHashSet(Bot.BotsComparer);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericException(e);
 
@@ -597,7 +617,7 @@ namespace ArchiSteamFarm {
 				await Task.Delay(10000).ConfigureAwait(false);
 			}
 
-			await Utilities.InParallel(botNames.OrderBy(botName => botName).Select(Bot.RegisterBot)).ConfigureAwait(false);
+			await Utilities.InParallel(botNames.OrderBy(botName => botName, Bot.BotsComparer).Select(Bot.RegisterBot)).ConfigureAwait(false);
 		}
 
 		private static async Task UpdateAndRestart() {
@@ -725,6 +745,11 @@ namespace ArchiSteamFarm {
 			}
 
 			return true;
+		}
+
+		internal enum EFileType : byte {
+			Config,
+			Database
 		}
 
 		internal enum EUserInputType : byte {

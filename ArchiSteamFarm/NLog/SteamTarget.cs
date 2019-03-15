@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -60,7 +60,7 @@ namespace ArchiSteamFarm.NLog {
 
 			base.Write(logEvent);
 
-			if (SteamID == 0) {
+			if ((SteamID == 0) || (Bot.Bots == null) || (Bot.Bots.Count == 0)) {
 				return;
 			}
 
@@ -73,7 +73,9 @@ namespace ArchiSteamFarm.NLog {
 			Bot bot = null;
 
 			if (!string.IsNullOrEmpty(BotName)) {
-				if (!Bot.Bots.TryGetValue(BotName, out bot) || !bot.IsConnectedAndLoggedOn) {
+				bot = Bot.GetBot(BotName);
+
+				if (bot?.IsConnectedAndLoggedOn != true) {
 					return;
 				}
 			}

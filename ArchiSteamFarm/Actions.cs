@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -21,6 +21,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -84,6 +85,10 @@ namespace ArchiSteamFarm {
 		public async Task<(bool Success, string Message)> HandleTwoFactorAuthenticationConfirmations(bool accept, Steam.ConfirmationDetails.EType? acceptedType = null, IReadOnlyCollection<ulong> acceptedTradeOfferIDs = null, bool waitIfNeeded = false) {
 			if (!Bot.HasMobileAuthenticator) {
 				return (false, Strings.BotNoASFAuthenticator);
+			}
+
+			if (!Bot.IsConnectedAndLoggedOn) {
+				return (false, Strings.BotNotConnected);
 			}
 
 			HashSet<ulong> handledTradeOfferIDs = null;
@@ -202,7 +207,8 @@ namespace ArchiSteamFarm {
 		}
 
 		[PublicAPI]
-		public async Task<(bool Success, string Message)> SendTradeOffer(uint appID = Steam.Asset.SteamAppID, uint contextID = Steam.Asset.SteamCommunityContextID, ulong targetSteamID = 0, IReadOnlyCollection<uint> wantedRealAppIDs = null, IReadOnlyCollection<Steam.Asset.EType> wantedTypes = null) {
+		[SuppressMessage("ReSharper", "FunctionComplexityOverflow")]
+		public async Task<(bool Success, string Message)> SendTradeOffer(uint appID = Steam.Asset.SteamAppID, ulong contextID = Steam.Asset.SteamCommunityContextID, ulong targetSteamID = 0, string tradeToken = null, IReadOnlyCollection<uint> wantedRealAppIDs = null, IReadOnlyCollection<Steam.Asset.EType> wantedTypes = null) {
 			if ((appID == 0) || (contextID == 0)) {
 				Bot.ArchiLogger.LogNullError(nameof(appID) + " || " + nameof(contextID));
 
@@ -218,6 +224,10 @@ namespace ArchiSteamFarm {
 
 				if (targetSteamID == 0) {
 					return (false, Strings.BotLootingMasterNotDefined);
+				}
+
+				if (string.IsNullOrEmpty(tradeToken) && !string.IsNullOrEmpty(Bot.BotConfig.SteamTradeToken)) {
+					tradeToken = Bot.BotConfig.SteamTradeToken;
 				}
 			}
 
@@ -240,7 +250,7 @@ namespace ArchiSteamFarm {
 					TradingScheduled = false;
 				}
 
-				HashSet<Steam.Asset> inventory = await Bot.ArchiWebHandler.GetInventory(Bot.SteamID, appID, contextID, true, wantedRealAppIDs, wantedTypes).ConfigureAwait(false);
+				HashSet<Steam.Asset> inventory = await Bot.ArchiWebHandler.GetInventory(Bot.SteamID, appID, contextID, tradable: true, wantedRealAppIDs: wantedRealAppIDs, wantedTypes: wantedTypes).ConfigureAwait(false);
 
 				if ((inventory == null) || (inventory.Count == 0)) {
 					return (false, string.Format(Strings.ErrorIsEmpty, nameof(inventory)));
@@ -250,7 +260,15 @@ namespace ArchiSteamFarm {
 					return (false, Strings.BotLootingFailed);
 				}
 
-				(bool success, HashSet<ulong> mobileTradeOfferIDs) = await Bot.ArchiWebHandler.SendTradeOffer(targetSteamID, inventory, token: Bot.BotConfig.SteamTradeToken).ConfigureAwait(false);
+				if (string.IsNullOrEmpty(tradeToken) && (Bot.SteamFriends.GetFriendRelationship(targetSteamID) != EFriendRelationship.Friend)) {
+					Bot targetBot = Bot.Bots.Values.FirstOrDefault(bot => bot.SteamID == targetSteamID);
+
+					if (targetBot?.IsConnectedAndLoggedOn == true) {
+						tradeToken = await targetBot.ArchiHandler.GetTradeToken().ConfigureAwait(false);
+					}
+				}
+
+				(bool success, HashSet<ulong> mobileTradeOfferIDs) = await Bot.ArchiWebHandler.SendTradeOffer(targetSteamID, inventory, token: tradeToken).ConfigureAwait(false);
 
 				if ((mobileTradeOfferIDs != null) && (mobileTradeOfferIDs.Count > 0) && Bot.HasMobileAuthenticator) {
 					(bool twoFactorSuccess, _) = await HandleTwoFactorAuthenticationConfirmations(true, Steam.ConfirmationDetails.EType.Trade, mobileTradeOfferIDs, true).ConfigureAwait(false);

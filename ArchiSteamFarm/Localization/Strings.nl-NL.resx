@@ -290,7 +290,7 @@ StackTrace:
     <value>Deze bot is al gestopt!</value>
   </data>
   <data name="BotNotFound" xml:space="preserve">
-    <value>Kon geen bot vinden met de naam {0}!</value>
+    <value>Geen bot gevonden met de naam {0}!</value>
     <comment>{0} will be replaced by bot's name query (string)</comment>
   </data>
   <data name="BotStatusOverview" xml:space="preserve">
@@ -581,7 +581,7 @@ StackTrace:
     <value>De door jou ingevoerde CurrentCulture is ongeldig. ASF zal de standaardtaal blijven gebruiken!</value>
   </data>
   <data name="TranslationIncomplete" xml:space="preserve">
-    <value>ASF probeert de {0} taalmodule te gebruiken, maar het vertalen in deze taal is slechts {1} compleet. Misschien kan je ons helpen om ASF te vertalen in jouw taal?</value>
+    <value>ASF zal de {0} taalmodule gebruiken. De vertaling, inclusief de Wiki, is {1} compleet. Misschien kun je ons helpen om ASF te vertalen in jouw taal?</value>
     <comment>{0} will be replaced by culture code, such as "en-US", {1} will be replaced by completeness percentage, such as "78.5%"</comment>
   </data>
   <data name="IdlingGameNotPossible" xml:space="preserve">
@@ -692,5 +692,29 @@ StackTrace:
   </data>
   <data name="PluginsWarning" xml:space="preserve">
     <value>Je hebt een of meer aangepaste plugins geladen in ASF. Neem in geval van problemen contact op met de ontwikkelaars van deze plugins, aangezien we geen ondersteuning voor aangepaste instellingen kunnen bieden.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Een ogenblik geduld...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Voer commando in: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Wordt uitgevoerd...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>De interactieve console is nu actief, typ 'c' om naar de opdrachtprompt te gaan.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>De interactieve console is niet beschikbaar vanwege de ontbrekende configuratie-eigenschap {0}.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Reactie: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Bot heeft {0} spellen resterend in de achtergrondwachtrij.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
   </data>
 </root>

@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -35,7 +35,7 @@ namespace ArchiSteamFarm.CustomPlugins.ExamplePlugin {
 	// Your plugin class should inherit the plugin interfaces it wants to handle
 	// If you do not want to handle a particular action (e.g. OnBotMessage that is offered in IBotMessage), it's the best idea to not inherit it at all
 	// This will keep your code compact, efficient and less dependent. You can always add additional interfaces when you'll need them, this example project will inherit quite a bit of them to show you potential usage
-	internal sealed class ExamplePlugin : IASF, IBot, IBotCommand, IBotConnection, IBotMessage, IBotModules, IBotTradeOffer {
+	internal sealed class ExamplePlugin : IASF, IBot, IBotCommand, IBotConnection, IBotFriendRequest, IBotMessage, IBotModules, IBotTradeOffer {
 		// This is used for identification purposes, typically you want to use a friendly name of your plugin here, such as the name of your main class
 		// Please note that this property can have direct dependencies only on structures that were initialized by the constructor, as it's possible to be called before OnLoaded() takes place
 		public string Name => nameof(ExamplePlugin);
@@ -105,6 +105,12 @@ namespace ArchiSteamFarm.CustomPlugins.ExamplePlugin {
 		// Still, you should take anything other than EResult.OK with a grain of salt, unless you want to assume that Steam knows why it disconnected us (hehe, you bet)
 		public void OnBotDisconnected(Bot bot, EResult reason) { }
 
+		// This method is called when bot receives a friend request or group invite that ASF isn't willing to accept
+		// It allows you to generate a response whether ASF should accept it (true) or proceed like usual (false)
+		// If you wanted to do extra filtering (e.g. friend requests only), you can interpret the steamID as SteamID (SteamKit2 type) and then operate on AccountType
+		// As an example, we'll run a trade bot that is open to all friend/group invites, therefore we'll accept all of them here
+		public Task<bool> OnBotFriendRequest(Bot bot, ulong steamID) => Task.FromResult(true);
+
 		// This method is called at the end of Bot's constructor
 		// You can initialize all your per-bot structures here
 		// In general you should do that only when you have a particular need of custom modules or alike, since ASF's plugin system will always provide bot to you as a function argument
@@ -156,7 +162,7 @@ namespace ArchiSteamFarm.CustomPlugins.ExamplePlugin {
 		// At this point you can access core ASF's functionality, such as logging or a web browser
 		// Once all plugins execute their OnLoaded() methods, OnASFInit() will be called next
 		public void OnLoaded() {
-			ASF.ArchiLogger.LogGenericInfo("Hey! Thanks for checking if our example plugin works fine, this is a confirmation that indeed OnLoaded() method was called!");
+			ASF.ArchiLogger.LogGenericInfo("Hey! Thanks for checking if our example plugin works fine, this is a confirmation that indeed " + nameof(OnLoaded) + "() method was called!");
 			ASF.ArchiLogger.LogGenericInfo("Good luck in whatever you're doing!");
 		}
 	}

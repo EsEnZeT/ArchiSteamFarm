@@ -249,7 +249,7 @@ StackTrace:
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
   <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Syötä mobiili authentikaattorin laite ID (sisältäen "android:"): </value>
+    <value>Syötä mobiilivarmennuksen laitetunnus (sisältäen "android:"): </value>
     <comment>Please note that this translation should end with space</comment>
   </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
@@ -257,7 +257,7 @@ StackTrace:
     <comment>Please note that this translation should end with space</comment>
   </data>
   <data name="UserInputSteamGuard" xml:space="preserve">
-    <value>Syötä SteamGuard authentikointi koodi joka lähetettiin sähköpostiisi: </value>
+    <value>Syötä SteamGuard varmennuskoodi joka lähetettiin sähköpostiisi: </value>
     <comment>Please note that this translation should end with space</comment>
   </data>
   <data name="UserInputSteamLogin" xml:space="preserve">
@@ -647,18 +647,43 @@ StackTrace:
     <comment>{0} will be replaced by the bug's name provided by ASF</comment>
   </data>
   
+  <data name="BotWalletBalance" xml:space="preserve">
+    <value>Lompakon saldo: {0} {1}</value>
+    <comment>{0} will be replaced by wallet balance value, {1} will be replaced by currency name</comment>
+  </data>
+  <data name="BotHasNoWallet" xml:space="preserve">
+    <value>Botilla ei ole lompakkoa.</value>
+  </data>
+  <data name="BotLevel" xml:space="preserve">
+    <value>Botin taso on {0}.</value>
+    <comment>{0} will be replaced by bot's level</comment>
+  </data>
   
   
+  <data name="ErrorAborted" xml:space="preserve">
+    <value>Keskeytetty!</value>
+  </data>
   
   
-  
-  
-  
-  
-  
-  
+  <data name="PluginLoaded" xml:space="preserve">
+    <value>{0} ladattiin onnistuneesti!</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin</comment>
+  </data>
+  <data name="PluginLoading" xml:space="preserve">
+    <value>Ladataan {0} V{1}...</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin, {1} will be replaced by its version</comment>
+  </data>
   <data name="NothingFound" xml:space="preserve">
     <value>Mitään ei löytynyt!</value>
   </data>
+  
+  
+  
+  <data name="Executing" xml:space="preserve">
+    <value>Suoritetaan...</value>
+  </data>
+  
+  
+  
   
 </root>

@@ -1,5 +1,5 @@
-#!/bin/bash
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
 TARGET_FRAMEWORK="netcoreapp2.2"
 
@@ -69,8 +69,7 @@ if [[ "$ASF_UI" -eq 1 ]]; then
 		rm -rf "ASF-ui/dist"
 
 		cd ASF-ui
-		npm i
-		git checkout -- package.json package-lock.json # Until we can switch to npm ci, avoid any changes to source files done by npm i
+		npm ci
 		npm run-script deploy
 		cd ..
 

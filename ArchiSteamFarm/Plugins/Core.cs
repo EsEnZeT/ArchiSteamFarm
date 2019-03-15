@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -86,35 +86,26 @@ namespace ArchiSteamFarm.Plugins {
 		}
 
 		internal static bool InitPlugins() {
-			string pluginsPath = Path.Combine(SharedInfo.HomeDirectory, SharedInfo.PluginsDirectory);
-
-			if (!Directory.Exists(pluginsPath)) {
-				ASF.ArchiLogger.LogGenericTrace(Strings.NothingFound);
-
-				return true;
-			}
-
 			HashSet<Assembly> assemblies = new HashSet<Assembly>();
 
-			try {
-				foreach (string assemblyPath in Directory.EnumerateFiles(pluginsPath, "*.dll", SearchOption.AllDirectories)) {
-					Assembly assembly;
+			string pluginsPath = Path.Combine(SharedInfo.HomeDirectory, SharedInfo.PluginsDirectory);
 
-					try {
-						assembly = Assembly.LoadFrom(assemblyPath);
-					} catch (Exception e) {
-						ASF.ArchiLogger.LogGenericError(string.Format(Strings.ErrorIsInvalid, assemblyPath));
-						ASF.ArchiLogger.LogGenericWarningException(e);
+			if (Directory.Exists(pluginsPath)) {
+				HashSet<Assembly> loadedAssemblies = LoadAssembliesFrom(pluginsPath);
 
-						continue;
-					}
-
-					assemblies.Add(assembly);
+				if ((loadedAssemblies != null) && (loadedAssemblies.Count > 0)) {
+					assemblies.UnionWith(loadedAssemblies);
 				}
-			} catch (Exception e) {
-				ASF.ArchiLogger.LogGenericException(e);
+			}
 
-				return false;
+			string customPluginsPath = Path.Combine(Directory.GetCurrentDirectory(), SharedInfo.PluginsDirectory);
+
+			if (Directory.Exists(customPluginsPath)) {
+				HashSet<Assembly> loadedAssemblies = LoadAssembliesFrom(customPluginsPath);
+
+				if ((loadedAssemblies != null) && (loadedAssemblies.Count > 0)) {
+					assemblies.UnionWith(loadedAssemblies);
+				}
 			}
 
 			if (assemblies.Count == 0) {
@@ -248,6 +239,30 @@ namespace ArchiSteamFarm.Plugins {
 			}
 		}
 
+		internal static async Task<bool> OnBotFriendRequest(Bot bot, ulong steamID) {
+			if ((bot == null) || (steamID == 0)) {
+				ASF.ArchiLogger.LogNullError(nameof(bot) + " || " + nameof(steamID));
+
+				return false;
+			}
+
+			if ((ActivePlugins == null) || (ActivePlugins.Count == 0)) {
+				return false;
+			}
+
+			IList<bool> responses;
+
+			try {
+				responses = await Utilities.InParallel(ActivePlugins.OfType<IBotFriendRequest>().Select(plugin => plugin.OnBotFriendRequest(bot, steamID))).ConfigureAwait(false);
+			} catch (Exception e) {
+				ASF.ArchiLogger.LogGenericException(e);
+
+				return false;
+			}
+
+			return responses.Any(response => response);
+		}
+
 		internal static async Task OnBotInit(Bot bot) {
 			if (bot == null) {
 				ASF.ArchiLogger.LogNullError(nameof(bot));
@@ -327,6 +342,48 @@ namespace ArchiSteamFarm.Plugins {
 			return string.Join(Environment.NewLine, responses.Where(response => !string.IsNullOrEmpty(response)));
 		}
 
+		internal static async Task OnBotSteamCallbacksInit(Bot bot, CallbackManager callbackManager) {
+			if ((bot == null) || (callbackManager == null)) {
+				ASF.ArchiLogger.LogNullError(nameof(bot) + " || " + nameof(callbackManager));
+
+				return;
+			}
+
+			if ((ActivePlugins == null) || (ActivePlugins.Count == 0)) {
+				return;
+			}
+
+			try {
+				await Utilities.InParallel(ActivePlugins.OfType<IBotSteamClient>().Select(plugin => Task.Run(() => plugin.OnBotSteamCallbacksInit(bot, callbackManager)))).ConfigureAwait(false);
+			} catch (Exception e) {
+				ASF.ArchiLogger.LogGenericException(e);
+			}
+		}
+
+		internal static async Task<HashSet<ClientMsgHandler>> OnBotSteamHandlersInit(Bot bot) {
+			if (bot == null) {
+				ASF.ArchiLogger.LogNullError(nameof(bot));
+
+				return null;
+			}
+
+			if ((ActivePlugins == null) || (ActivePlugins.Count == 0)) {
+				return null;
+			}
+
+			IList<IReadOnlyCollection<ClientMsgHandler>> responses;
+
+			try {
+				responses = await Utilities.InParallel(ActivePlugins.OfType<IBotSteamClient>().Select(plugin => Task.Run(() => plugin.OnBotSteamHandlersInit(bot)))).ConfigureAwait(false);
+			} catch (Exception e) {
+				ASF.ArchiLogger.LogGenericException(e);
+
+				return null;
+			}
+
+			return responses.Where(response => response != null).SelectMany(handler => handler).Where(handler => handler != null).ToHashSet();
+		}
+
 		internal static async Task<bool> OnBotTradeOffer(Bot bot, Steam.TradeOffer tradeOffer) {
 			if ((bot == null) || (tradeOffer == null)) {
 				ASF.ArchiLogger.LogNullError(nameof(bot) + " || " + nameof(tradeOffer));
@@ -367,6 +424,43 @@ namespace ArchiSteamFarm.Plugins {
 			} catch (Exception e) {
 				ASF.ArchiLogger.LogGenericException(e);
 			}
+		}
+
+		private static HashSet<Assembly> LoadAssembliesFrom(string path) {
+			if (string.IsNullOrEmpty(path)) {
+				ASF.ArchiLogger.LogNullError(nameof(path));
+
+				return null;
+			}
+
+			if (!Directory.Exists(path)) {
+				return null;
+			}
+
+			HashSet<Assembly> assemblies = new HashSet<Assembly>();
+
+			try {
+				foreach (string assemblyPath in Directory.EnumerateFiles(path, "*.dll", SearchOption.AllDirectories)) {
+					Assembly assembly;
+
+					try {
+						assembly = Assembly.LoadFrom(assemblyPath);
+					} catch (Exception e) {
+						ASF.ArchiLogger.LogGenericError(string.Format(Strings.ErrorIsInvalid, assemblyPath));
+						ASF.ArchiLogger.LogGenericWarningException(e);
+
+						continue;
+					}
+
+					assemblies.Add(assembly);
+				}
+			} catch (Exception e) {
+				ASF.ArchiLogger.LogGenericException(e);
+
+				return null;
+			}
+
+			return assemblies;
 		}
 	}
 }

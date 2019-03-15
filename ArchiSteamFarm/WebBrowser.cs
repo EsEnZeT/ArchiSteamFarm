@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -77,7 +77,7 @@ namespace ArchiSteamFarm {
 		[NotNull]
 		[PublicAPI]
 		public HttpClient GenerateDisposableHttpClient(bool extendedTimeout = false) {
-			HttpClient result = new HttpClient(HttpClientHandler) {
+			HttpClient result = new HttpClient(HttpClientHandler, false) {
 				Timeout = TimeSpan.FromSeconds(extendedTimeout ? ExtendedTimeoutMultiplier * ASF.GlobalConfig.ConnectionTimeout : ASF.GlobalConfig.ConnectionTimeout)
 			};
 
@@ -366,7 +366,7 @@ namespace ArchiSteamFarm {
 									}
 
 									readThisBatch -= contentLength / printPercentage;
-									ArchiLogger.LogGenericDebug(++batch * printPercentage + "%...");
+									ArchiLogger.LogGenericDebug((++batch * printPercentage) + "%...");
 								}
 							}
 						} catch (Exception e) {

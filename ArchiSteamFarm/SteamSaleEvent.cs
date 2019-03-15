@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -20,7 +20,7 @@
 // limitations under the License.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using ArchiSteamFarm.Localization;
@@ -40,7 +40,7 @@ namespace ArchiSteamFarm {
 			SaleEventTimer = new Timer(
 				async e => await ExploreDiscoveryQueue().ConfigureAwait(false),
 				null,
-				TimeSpan.FromHours(1.1) + TimeSpan.FromSeconds(Program.LoadBalancingDelay * Bot.Bots.Count), // Delay
+				TimeSpan.FromHours(1.1) + TimeSpan.FromSeconds(ASF.LoadBalancingDelay * Bot.Bots.Count), // Delay
 				TimeSpan.FromHours(8.1) // Period
 			);
 		}
@@ -55,7 +55,7 @@ namespace ArchiSteamFarm {
 			Bot.ArchiLogger.LogGenericTrace(Strings.Starting);
 
 			for (byte i = 0; (i < MaxSingleQueuesDaily) && (await IsDiscoveryQueueAvailable().ConfigureAwait(false)).GetValueOrDefault(); i++) {
-				HashSet<uint> queue = await Bot.ArchiWebHandler.GenerateNewDiscoveryQueue().ConfigureAwait(false);
+				ImmutableHashSet<uint> queue = await Bot.ArchiWebHandler.GenerateNewDiscoveryQueue().ConfigureAwait(false);
 
 				if ((queue == null) || (queue.Count == 0)) {
 					Bot.ArchiLogger.LogGenericTrace(string.Format(Strings.ErrorIsEmpty, nameof(queue)));

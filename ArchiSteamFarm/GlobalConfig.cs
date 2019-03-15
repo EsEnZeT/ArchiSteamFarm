@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -193,11 +193,7 @@ namespace ArchiSteamFarm {
 		public ProtocolTypes SteamProtocols { get; private set; } = DefaultSteamProtocols;
 
 		[JsonExtensionData]
-		internal Dictionary<string, JToken> AdditionalProperties {
-			get;
-			[UsedImplicitly]
-			private set;
-		}
+		internal Dictionary<string, JToken> AdditionalProperties { get; set; }
 
 		internal bool IsWebProxyPasswordSet { get; private set; }
 		internal bool ShouldSerializeEverything { private get; set; } = true;
@@ -255,6 +251,10 @@ namespace ArchiSteamFarm {
 
 			if (!string.IsNullOrEmpty(SteamMessagePrefix) && (SteamMessagePrefix.Length > Bot.MaxMessagePrefixLength)) {
 				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamMessagePrefix), SteamMessagePrefix));
+			}
+
+			if ((SteamOwnerID != 0) && !new SteamID(SteamOwnerID).IsIndividualAccount) {
+				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamOwnerID), SteamOwnerID));
 			}
 
 			if ((SteamProtocols <= 0) || (SteamProtocols > ProtocolTypes.All)) {

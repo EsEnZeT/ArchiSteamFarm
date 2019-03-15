@@ -613,7 +613,7 @@
     <value>Доступ заборонено!</value>
   </data>
   <data name="WarningPreReleaseVersion" xml:space="preserve">
-    <value>Ви користуєтеся версією, яка новіша за останню версію у цьому каналі оновлення. Будь ласка, зверніть увагу, що пре-релізні версіі призначені для користувачів які вміють доповідати про помилки, вирішувати питання та надавати зворотній зв'язок - технічна підтримка не надається.</value>
+    <value>Ви користуєтеся версією, яка новіша за останню версію у цьому каналі оновлення. Будь ласка, зверніть увагу, що підготовчі версії призначені для користувачів які вміють доповідати про помилки, вирішувати питання та надавати зворотній зв'язок - технічна підтримка не надається.</value>
   </data>
   <data name="BotStats" xml:space="preserve">
     <value>Поточне використання пам'яті: {0} МБ.</value>
@@ -692,5 +692,29 @@
   </data>
   <data name="PluginsWarning" xml:space="preserve">
     <value>Ви завантажили до ASF один чи більше плаґінів. Оскільки ми не в змозі надавати підтримку для модифікованих конфігурацій, будь ласка у разі якихось проблем звертайтеся до розробників відповідного плаґіну.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Будь ласка, зачекайте...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Введіть команду: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Виконання...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>Інтерактивну консоль активовано, натисніть 'c' щоб перейти до режиму команд.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>Інтерактивну консоль не активовано через відсутність параметру конфігурації {0}.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Відповідь: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Бот має {0} ігор у фоновій черзі.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
   </data>
 </root>

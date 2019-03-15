@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -161,7 +161,18 @@ namespace ArchiSteamFarm {
 		}
 
 		[PublicAPI]
-		public static bool IsValidHexadecimalString(string text) {
+		public static bool IsValidDigitsText(string text) {
+			if (string.IsNullOrEmpty(text)) {
+				ASF.ArchiLogger.LogNullError(nameof(text));
+
+				return false;
+			}
+
+			return text.All(char.IsDigit);
+		}
+
+		[PublicAPI]
+		public static bool IsValidHexadecimalText(string text) {
 			if (string.IsNullOrEmpty(text)) {
 				ASF.ArchiLogger.LogNullError(nameof(text));
 
@@ -178,7 +189,7 @@ namespace ArchiSteamFarm {
 			string lastHex;
 
 			if (text.Length >= split) {
-				StringBuilder hex = new StringBuilder(split);
+				StringBuilder hex = new StringBuilder(split, 16);
 
 				foreach (char character in text) {
 					hex.Append(character);
@@ -253,35 +264,6 @@ namespace ArchiSteamFarm {
 			lock (Random) {
 				return Random.Next();
 			}
-		}
-
-		[NotNull]
-		internal static string ReadLineMasked(char mask = '*') {
-			StringBuilder result = new StringBuilder();
-
-			ConsoleKeyInfo keyInfo;
-
-			while ((keyInfo = Console.ReadKey(true)).Key != ConsoleKey.Enter) {
-				if (!char.IsControl(keyInfo.KeyChar)) {
-					result.Append(keyInfo.KeyChar);
-					Console.Write(mask);
-				} else if ((keyInfo.Key == ConsoleKey.Backspace) && (result.Length > 0)) {
-					result.Remove(result.Length - 1, 1);
-
-					if (Console.CursorLeft == 0) {
-						Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
-						Console.Write(' ');
-						Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
-					} else {
-						// There are two \b characters here
-						Console.Write(@" ");
-					}
-				}
-			}
-
-			Console.WriteLine();
-
-			return result.ToString();
 		}
 	}
 }

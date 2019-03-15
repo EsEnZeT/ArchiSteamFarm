@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -303,7 +303,7 @@ namespace ArchiSteamFarm {
 			// Dashes are optional in the ID, strip them off for comparison
 			string hash = deviceID.Replace("-", "");
 
-			return (hash.Length > 0) && Utilities.IsValidHexadecimalString(hash);
+			return (hash.Length > 0) && (Utilities.IsValidDigitsText(hash) || Utilities.IsValidHexadecimalText(hash));
 		}
 
 		private string GenerateConfirmationHash(uint time, string tag = null) {
@@ -398,7 +398,7 @@ namespace ArchiSteamFarm {
 			uint fullCode = BitConverter.ToUInt32(bytes, 0) & 0x7fffffff;
 
 			// Build the alphanumeric code
-			StringBuilder code = new StringBuilder();
+			StringBuilder code = new StringBuilder(CodeDigits, CodeDigits);
 
 			for (byte i = 0; i < CodeDigits; i++) {
 				code.Append(CodeCharacters[fullCode % CodeCharacters.Length]);

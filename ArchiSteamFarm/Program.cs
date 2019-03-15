@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -38,19 +38,14 @@ using SteamKit2;
 
 namespace ArchiSteamFarm {
 	internal static class Program {
-		internal static byte LoadBalancingDelay => Math.Max(ASF.GlobalConfig?.LoginLimiterDelay ?? 0, GlobalConfig.DefaultLoginLimiterDelay);
-
 		internal static bool ProcessRequired { get; private set; }
 		internal static bool RestartAllowed { get; private set; } = true;
-
-		private static readonly object ConsoleLock = new object();
+		internal static bool ShutdownSequenceInitialized { get; private set; }
 
 		// We need to keep this one assigned and not calculated on-demand
 		private static readonly string ProcessFileName = Process.GetCurrentProcess().MainModule.FileName;
 
 		private static readonly TaskCompletionSource<byte> ShutdownResetEvent = new TaskCompletionSource<byte>();
-
-		private static bool ShutdownSequenceInitialized;
 		private static bool SystemRequired;
 
 		internal static async Task Exit(byte exitCode = 0) {
@@ -60,78 +55,6 @@ namespace ArchiSteamFarm {
 
 			await Shutdown(exitCode).ConfigureAwait(false);
 			Environment.Exit(exitCode);
-		}
-
-		internal static string GetUserInput(ASF.EUserInputType userInputType, string botName = SharedInfo.ASF) {
-			if (userInputType == ASF.EUserInputType.Unknown) {
-				return null;
-			}
-
-			if (ASF.GlobalConfig.Headless) {
-				ASF.ArchiLogger.LogGenericWarning(Strings.ErrorUserInputRunningInHeadlessMode);
-
-				return null;
-			}
-
-			string result;
-
-			lock (ConsoleLock) {
-				Logging.OnUserInputStart();
-
-				try {
-					switch (userInputType) {
-						case ASF.EUserInputType.DeviceID:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputDeviceID, botName));
-							result = Console.ReadLine();
-
-							break;
-						case ASF.EUserInputType.Login:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamLogin, botName));
-							result = Console.ReadLine();
-
-							break;
-						case ASF.EUserInputType.Password:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamPassword, botName));
-							result = Utilities.ReadLineMasked();
-
-							break;
-						case ASF.EUserInputType.SteamGuard:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamGuard, botName));
-							result = Console.ReadLine();
-
-							break;
-						case ASF.EUserInputType.SteamParentalCode:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamParentalCode, botName));
-							result = Utilities.ReadLineMasked();
-
-							break;
-						case ASF.EUserInputType.TwoFactorAuthentication:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteam2FA, botName));
-							result = Console.ReadLine();
-
-							break;
-						default:
-							ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(userInputType), userInputType));
-							Console.Write(Bot.FormatBotResponse(string.Format(Strings.UserInputUnknown, userInputType), botName));
-							result = Console.ReadLine();
-
-							break;
-					}
-
-					if (!Console.IsOutputRedirected) {
-						Console.Clear(); // For security purposes
-					}
-				} catch (Exception e) {
-					Logging.OnUserInputEnd();
-					ASF.ArchiLogger.LogGenericException(e);
-
-					return null;
-				}
-
-				Logging.OnUserInputEnd();
-			}
-
-			return !string.IsNullOrEmpty(result) ? result.Trim() : null;
 		}
 
 		internal static async Task Restart() {
@@ -200,7 +123,10 @@ namespace ArchiSteamFarm {
 		}
 
 		private static async Task InitASF(IReadOnlyCollection<string> args) {
-			ASF.ArchiLogger.LogGenericInfo(SharedInfo.PublicIdentifier + " V" + SharedInfo.Version + " (" + SharedInfo.BuildInfo.Variant + "/" + SharedInfo.ModuleVersion + " | " + OS.Variant + ")");
+			string programIdentifier = SharedInfo.PublicIdentifier + " V" + SharedInfo.Version + " (" + SharedInfo.BuildInfo.Variant + "/" + SharedInfo.ModuleVersion + " | " + OS.Variant + ")";
+
+			Console.Title = programIdentifier;
+			ASF.ArchiLogger.LogGenericInfo(programIdentifier);
 
 			await InitGlobalConfigAndLanguage().ConfigureAwait(false);
 
@@ -244,7 +170,13 @@ namespace ArchiSteamFarm {
 		}
 
 		private static async Task InitGlobalConfigAndLanguage() {
-			string globalConfigFile = Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalConfigFileName);
+			string globalConfigFile = ASF.GetFilePath(ASF.EFileType.Config);
+
+			if (string.IsNullOrEmpty(globalConfigFile)) {
+				ASF.ArchiLogger.LogNullError(nameof(globalConfigFile));
+
+				return;
+			}
 
 			GlobalConfig globalConfig;
 
@@ -265,7 +197,7 @@ namespace ArchiSteamFarm {
 			ASF.InitGlobalConfig(globalConfig);
 
 			if (Debugging.IsUserDebugging) {
-				ASF.ArchiLogger.LogGenericDebug(SharedInfo.GlobalConfigFileName + ": " + JsonConvert.SerializeObject(ASF.GlobalConfig, Formatting.Indented));
+				ASF.ArchiLogger.LogGenericDebug(globalConfigFile + ": " + JsonConvert.SerializeObject(ASF.GlobalConfig, Formatting.Indented));
 			}
 
 			if (!string.IsNullOrEmpty(ASF.GlobalConfig.CurrentCulture)) {
@@ -327,7 +259,13 @@ namespace ArchiSteamFarm {
 		}
 
 		private static async Task InitGlobalDatabaseAndServices() {
-			string globalDatabaseFile = Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalDatabaseFileName);
+			string globalDatabaseFile = ASF.GetFilePath(ASF.EFileType.Database);
+
+			if (string.IsNullOrEmpty(globalDatabaseFile)) {
+				ASF.ArchiLogger.LogNullError(nameof(globalDatabaseFile));
+
+				return;
+			}
 
 			if (!File.Exists(globalDatabaseFile)) {
 				ASF.ArchiLogger.LogGenericInfo(Strings.Welcome);
@@ -350,7 +288,7 @@ namespace ArchiSteamFarm {
 
 			// If debugging is on, we prepare debug directory prior to running
 			if (Debugging.IsUserDebugging) {
-				ASF.ArchiLogger.LogGenericDebug(SharedInfo.GlobalDatabaseFileName + ": " + JsonConvert.SerializeObject(ASF.GlobalDatabase, Formatting.Indented));
+				ASF.ArchiLogger.LogGenericDebug(globalDatabaseFile + ": " + JsonConvert.SerializeObject(ASF.GlobalDatabase, Formatting.Indented));
 				Logging.EnableTraceLogging();
 
 				if (Directory.Exists(SharedInfo.DebugDirectory)) {

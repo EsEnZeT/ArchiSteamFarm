@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -149,11 +149,7 @@ namespace ArchiSteamFarm {
 		public ulong SteamMasterClanID { get; private set; } = DefaultSteamMasterClanID;
 
 		[JsonExtensionData]
-		internal Dictionary<string, JToken> AdditionalProperties {
-			get;
-			[UsedImplicitly]
-			private set;
-		}
+		internal Dictionary<string, JToken> AdditionalProperties { get; set; }
 
 		internal string DecryptedSteamPassword {
 			get {
@@ -293,8 +289,14 @@ namespace ArchiSteamFarm {
 				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamParentalCode), SteamParentalCode));
 			}
 
-			foreach (EPermission permission in SteamUserPermissions.Values.Where(permission => !Enum.IsDefined(typeof(EPermission), permission))) {
-				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamUserPermissions), permission));
+			foreach ((ulong steamID, EPermission permission) in SteamUserPermissions) {
+				if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount) {
+					return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamUserPermissions), steamID));
+				}
+
+				if (!Enum.IsDefined(typeof(EPermission), permission)) {
+					return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamUserPermissions), permission));
+				}
 			}
 
 			return TradingPreferences <= ETradingPreferences.All ? (true, null) : (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(TradingPreferences), TradingPreferences));

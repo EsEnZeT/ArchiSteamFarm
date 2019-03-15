@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -30,8 +30,8 @@ namespace ArchiSteamFarm {
 		private static byte[] EncryptionKey = Encoding.UTF8.GetBytes(nameof(ArchiSteamFarm));
 
 		internal static string Decrypt(ECryptoMethod cryptoMethod, string encrypted) {
-			if (string.IsNullOrEmpty(encrypted)) {
-				ASF.ArchiLogger.LogNullError(nameof(encrypted));
+			if (!Enum.IsDefined(typeof(ECryptoMethod), cryptoMethod) || string.IsNullOrEmpty(encrypted)) {
+				ASF.ArchiLogger.LogNullError(nameof(cryptoMethod) + " || " + nameof(encrypted));
 
 				return null;
 			}
@@ -54,8 +54,8 @@ namespace ArchiSteamFarm {
 		}
 
 		internal static string Encrypt(ECryptoMethod cryptoMethod, string decrypted) {
-			if (string.IsNullOrEmpty(decrypted)) {
-				ASF.ArchiLogger.LogNullError(nameof(decrypted));
+			if (!Enum.IsDefined(typeof(ECryptoMethod), cryptoMethod) || string.IsNullOrEmpty(decrypted)) {
+				ASF.ArchiLogger.LogNullError(nameof(cryptoMethod) + " || " + nameof(decrypted));
 
 				return null;
 			}

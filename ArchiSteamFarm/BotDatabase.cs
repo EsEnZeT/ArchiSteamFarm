@@ -1,4 +1,4 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
@@ -32,13 +32,16 @@ using Newtonsoft.Json;
 
 namespace ArchiSteamFarm {
 	internal sealed class BotDatabase : IDisposable {
-		internal bool HasGamesToRedeemInBackground {
+		internal uint GamesToRedeemInBackgroundCount {
 			get {
 				lock (GamesToRedeemInBackground) {
-					return GamesToRedeemInBackground.Count > 0;
+					return (uint) GamesToRedeemInBackground.Count;
 				}
 			}
 		}
+
+		internal bool HasGamesToRedeemInBackground => GamesToRedeemInBackgroundCount > 0;
+		internal bool HasIdlingPriorityAppIDs => IdlingPriorityAppIDs.Count > 0;
 
 		[JsonProperty(Required = Required.DisallowNull)]
 		private readonly ConcurrentHashSet<ulong> BlacklistedFromTradesSteamIDs = new ConcurrentHashSet<ulong>();
